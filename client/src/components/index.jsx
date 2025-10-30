@@ -16,4 +16,6 @@ export { default as AuthModal } from "./AuthModal";
 export { default as SignInForm } from "./SignInForm";
 export { default as SignUpForm } from "./SignUpForm";
 export { default as RadioGroup } from "./RadioGroup";
+export { default as UserModal } from "./UserModal";
 export * from "./Snackbar";
+export * from "./Select";

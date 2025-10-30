@@ -3,15 +3,19 @@ import { theme } from "src/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { Snackbar, PageWrapper } from "src/components";
 import AppNavigator from "src/navigation/AppNavigator";
+import { AuthProvider } from "src/context/authContext";
 
 function App() {
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Snackbar />
-      <PageWrapper>
-        <AppNavigator />
-      </PageWrapper>
+      <AuthProvider>
+        <PageWrapper>
+          <AppNavigator />
+        </PageWrapper>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

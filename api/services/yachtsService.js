@@ -1,5 +1,7 @@
 import Yacht from "../db/models/Yacht.js";
+import User from "../db/models/User.js";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "../constants/yachts.js";
+import { Op } from "sequelize";
 
 // TODO change all endpoints
 export const listYachts = async (query) => {
@@ -46,4 +48,26 @@ export const updateYachtRating = async (query, rating) => {
     return null;
   }
   return yacht.update({ rating }, { returning: true });
+};
+
+export const getRecommendations = async (query) => {
+  const user = await User.findOne({ where: query });
+
+  if (!user) {
+    return next(HttpError(401, USER_NOT_FOUND));
+  }
+
+  const ids = Array.isArray(user.recommendations) ? user.recommendations : [];
+
+  if (ids.length === 0) {
+    return []; // TODO add cold start yachts here
+  }
+
+  const recommendedYachts = await Yacht.findAll({
+    where: {
+      id: { [Op.in]: ids },
+    },
+  });
+
+  return recommendedYachts;
 };

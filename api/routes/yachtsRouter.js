@@ -7,6 +7,7 @@ import {
   createYacht,
   updateYachtById,
   updateYachtRatingById,
+  getRecommendations,
 } from "../controllers/yachtsController.js";
 import controllerWrapper from "../helpers/controllerWrapper.js";
 import validateBody from "../helpers/validateBody.js";
@@ -21,6 +22,12 @@ const yachtsRouter = express.Router();
 
 // TODO change all endpoints
 yachtsRouter.get("/", controllerWrapper(getAllYachts));
+
+yachtsRouter.get(
+  "/recommendations",
+  authenticate,
+  controllerWrapper(getRecommendations)
+);
 
 yachtsRouter.get("/own", authenticate, controllerWrapper(getAllOwnYachts));
 

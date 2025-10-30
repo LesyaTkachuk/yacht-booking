@@ -1,31 +1,47 @@
 import { Typography, Divider, Stack } from "@mui/material";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate, useLocation, generatePath } from "react-router-dom";
 import DetailItem from "./DetailItem";
 import {
-  StyledWrapper,
+  StyledListItem,
   StyledImageWrapper,
   StyledImage,
   StyledIconButton,
 } from "./styled";
-import HeartIcon from "src/assets/icons/heart.svg";
+import HeartIcon from "src/assets/icons/heart-empty.svg";
 import LocationIcon from "src/assets/icons/location.svg";
 import CalendarIcon from "src/assets/icons/calendar.svg";
 import ArrowsIcon from "src/assets/icons/arrows.svg";
 import BedIcon from "src/assets/icons/bed.svg";
 import UsersIcon from "src/assets/icons/users.svg";
-import { useNavigate, useLocation } from "react-router-dom";
 import { ROUTES } from "src/navigation/routes";
+import { EVENTS } from "src/constants/events";
+import { addEvent } from "src/services/events";
 
 const YachtCard = ({ yachtDetails }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { mutate: viewEventMutation } = useMutation({
+    mutationFn: () =>
+      addEvent({
+        yachtId: yachtDetails.id,
+        type: EVENTS.VIEW,
+      }),
+    onSuccess: () => {
+      console.log(`${EVENTS.VIEW} event was successfully sent to the server`);
+    },
+  });
+
   const onYachtClick = () => {
-    navigate(replaceUrlParams(ROUTES.YACHT_DETAILS, { id: yachtDetails.id }), {
+    viewEventMutation();
+    navigate(generatePath(ROUTES.YACHT_DETAILS, { id: yachtDetails.id }), {
       state: location,
     });
   };
+
   return (
-    <StyledWrapper onClick={onYachtClick}>
+    <StyledListItem onClick={onYachtClick}>
       <StyledImageWrapper>
         <StyledImage src={yachtDetails.photos[0]} alt={yachtDetails.name} />
         <StyledIconButton>
@@ -73,7 +89,7 @@ const YachtCard = ({ yachtDetails }) => {
           />
         </Stack>
       </Stack>
-    </StyledWrapper>
+    </StyledListItem>
   );
 };
 

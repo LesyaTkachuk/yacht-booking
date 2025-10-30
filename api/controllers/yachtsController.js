@@ -98,3 +98,9 @@ export const updateYachtRatingById = async (req, res) => {
   }
   res.json(contact);
 };
+
+export const getRecommendations = async (req, res) => {
+  const { id } = req.user;
+  const recommendations = await yachtsService.getRecommendations({ id });
+  res.status(200).json(recommendations);
+};

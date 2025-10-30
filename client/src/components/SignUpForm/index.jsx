@@ -1,6 +1,7 @@
 import {
   PasswordTextField,
   TextField,
+  Select,
   ModalFooter,
   RadioGroup,
   showError,
@@ -10,9 +11,10 @@ import { FormProvider, useForm } from "react-hook-form";
 import { Stack } from "@mui/material";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { USER_ROLES } from "src/constants/user";
+import { USER_ROLES, SAILING_EXPERIENCE } from "src/constants/user";
 import { registerUser } from "src/services/auth";
 import { useMutation } from "@tanstack/react-query";
+import { capitalizeFirstLetter, isValidNumber } from "src/utils";
 
 const schema = yup.object().shape({
   email: yup.string().email("Invalid email").required("Email is required"),
@@ -32,7 +34,17 @@ const schema = yup.object().shape({
 
 const SignUpForm = ({ onClose }) => {
   const formMethods = useForm({
-    defaultValues: { email: "", password: "", confirmPassword: "", role: "" },
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "",
+      country: "",
+      sailingExp: "",
+      budgetMin: "",
+      budgetMax: "",
+      hasSkipperLicense: false,
+    },
     resolver: yupResolver(schema),
   });
 
@@ -44,7 +56,27 @@ const SignUpForm = ({ onClose }) => {
         : "I want to rent a yacht",
   }));
 
-  const { register, handleSubmit } = formMethods;
+  const sailingExperienceItems = Object.values(SAILING_EXPERIENCE).map(
+    (value) => ({
+      value,
+      title: capitalizeFirstLetter(value),
+    })
+  );
+
+  const hasSkipperLicenseItems = [
+    {
+      value: true,
+      title: "Yes",
+    },
+    {
+      value: false,
+      title: "No",
+    },
+  ];
+
+  const { register, handleSubmit, watch } = formMethods;
+
+  const role = watch("role");
 
   const { mutate: registerMutation, isPending } = useMutation({
     mutationFn: registerUser,
@@ -64,8 +96,22 @@ const SignUpForm = ({ onClose }) => {
   });
 
   const onSignUp = async (data) => {
-    const { confirmPassword, ...rest } = data;
-    registerMutation(rest);
+    const { confirmPassword, budgetMax, budgetMin, ...rest } = data;
+    const numberBudgetMin = isValidNumber(budgetMin) ? Number(budgetMin) : null;
+    const numberBudgetMax = isValidNumber(budgetMax) ? Number(budgetMax) : null;
+    if (!numberBudgetMin) {
+      showError(_, "Minimum budget must be a number");
+      return;
+    }
+    if (!numberBudgetMax) {
+      showError(_, "Maximum budget must be a number");
+      return;
+    }
+    registerMutation({
+      ...rest,
+      budgetMin: numberBudgetMin,
+      budgetMax: numberBudgetMax,
+    });
   };
 
   // TODO add lessee specific fields budget, sailing experience
@@ -78,18 +124,20 @@ const SignUpForm = ({ onClose }) => {
           {...register("email")}
           tooltipTitle="Enter an email address to sign in"
         />
-        <PasswordTextField
-          width="100%"
-          label="Password"
-          {...register("password")}
-          tooltipTitle="Enter a password"
-        />
-        <PasswordTextField
-          width="100%"
-          label="Confirm Password"
-          {...register("confirmPassword")}
-          tooltipTitle="Enter a password"
-        />
+        <Stack direction={"row"} gap={2}>
+          <PasswordTextField
+            width="50%"
+            label="Password"
+            {...register("password")}
+            tooltipTitle="Enter a password"
+          />
+          <PasswordTextField
+            width="50%"
+            label="Confirm Password"
+            {...register("confirmPassword")}
+            tooltipTitle="Confirm a password"
+          />
+        </Stack>
         <RadioGroup
           formMethods={formMethods}
           items={roleItems}
@@ -97,6 +145,46 @@ const SignUpForm = ({ onClose }) => {
           name="role"
           tooltipTitle="Select the appropriate role based on your interaction with the platform."
         />
+        {role === USER_ROLES.LESSEE && (
+          <>
+            <Stack direction={"row"} gap={2}>
+              <TextField
+                width="100%"
+                label="Sailing Country"
+                {...register("country")}
+                tooltipTitle="Enter the country you would like to sail in."
+              />
+              <Select
+                items={sailingExperienceItems}
+                name="sailingExp"
+                label={"Sailing Experience"}
+              />
+            </Stack>
+            <Stack direction={"row"} gap={2}>
+              <TextField
+                isNumeric
+                width="50%"
+                label="Minimum Budget"
+                {...register("budgetMin")}
+                tooltipTitle="Enter the minimum budget per day you are looking for."
+              />
+              <TextField
+                isNumeric
+                width="50%"
+                label="Maximum Budget"
+                {...register("budgetMax")}
+                tooltipTitle="Enter the maximum budget per day you are looking for."
+              />
+            </Stack>
+            <RadioGroup
+              formMethods={formMethods}
+              items={hasSkipperLicenseItems}
+              groupLabel="Has Skipper License?"
+              name="hasSkipperLicense"
+              tooltipTitle="Select if you have a skipper license."
+            />
+          </>
+        )}
       </FormProvider>
       <ModalFooter
         onClose={onClose}

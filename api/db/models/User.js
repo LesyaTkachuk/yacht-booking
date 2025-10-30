@@ -70,12 +70,16 @@ const User = sequelize.define(
       allowNull: true,
     },
     token: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       defaultValue: null,
     },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: Sequelize.NOW,
+    },
+    recommendations: {
+      type: DataTypes.ARRAY(DataTypes.UUID),
+      allowNull: true,
     },
   },
   {
