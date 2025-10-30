@@ -118,6 +118,7 @@ export const theme = createTheme({
           textTransform: "none",
           boxShadow: "none",
           gap: 10,
+          padding: "8px 20px",
         },
         contained: {
           minWidth: "100px",

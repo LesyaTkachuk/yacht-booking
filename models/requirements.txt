@@ -1,0 +1,7 @@
+scikit-surprise
+pandas
+psycopg2-binary
+numpy<2
+python-dotenv
+SQLAlchemy
+black

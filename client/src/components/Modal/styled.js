@@ -28,7 +28,7 @@ export const StyledFooterContainer = styled(Stack)(
     background-color: ${theme.palette.special.white};
     flex-direction: row;
     flex: 1;
-    padding-top: 20px;
+    padding: 20px 0 10px 0;
     width: 100%;
     gap: 10px;
   `

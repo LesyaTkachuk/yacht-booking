@@ -6,7 +6,7 @@ const Modal = ({ children, title, subtitle, open, onClose, actions }) => (
   <StyledModal open={open} onClose={onClose} disableEnforceFocus>
     <Content alignCenter={"align-center"} width={"600px"}>
       <Stack mb={4} pr={4} gap={1}>
-        {title && <Typography variant="h4">{title}</Typography>}
+        {title && <Typography variant="h5">{title}</Typography>}
         {subtitle && (
           <Typography variant="body1" color="secondary">
             {subtitle}

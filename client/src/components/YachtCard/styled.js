@@ -1,31 +1,35 @@
 import { styled, css } from "@mui/material/styles";
-import { IconButton, Stack } from "@mui/material";
+import { IconButton } from "@mui/material";
+import { Button } from "src/components";
 
-export const StyledWrapper = styled(Stack)(
-  ({ theme }) => css`
-    width: 500px;
-    gap: 12px;
-  `
-);
+export const StyledListItem = styled("li")`
+  cursor: pointer;
+  width: 530px;
+  gap: 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+`;
 
-export const StyledImageWrapper = styled("div")(
-  ({ theme }) => css`
-    position: relative;
-    width: 500px;
-    // height: 550px;
-    border-radius: 8px;
-    overflow: hidden;
-  `
-);
+export const StyledImageWrapper = styled("div")`
+  position: relative;
+  width: 530px;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
 
-export const StyledImage = styled("img")(
-  ({ theme }) => css`
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-    border-radius: 8px;
-  `
-);
+  &:hover {
+    scale: 1.02;
+    transition: all 0.3s ease-in-out;
+  }
+`;
+
+export const StyledImage = styled("img")`
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-radius: 8px;
+`;
 
 export const StyledIconButton = styled(IconButton)`
   position: absolute;
