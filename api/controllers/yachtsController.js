@@ -104,3 +104,9 @@ export const getRecommendations = async (req, res) => {
   const recommendations = await yachtsService.getRecommendations({ id });
   res.status(200).json(recommendations);
 };
+
+export const getSimilarYachtsById = async (req, res) => {
+  const { id } = req.params;
+  const recommendations = await yachtsService.getSimilarYachts(id);
+  res.status(200).json(recommendations);
+};

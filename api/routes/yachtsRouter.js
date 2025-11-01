@@ -3,6 +3,7 @@ import {
   getAllYachts,
   getAllOwnYachts,
   getYachtById,
+  getSimilarYachtsById,
   deleteYachtById,
   createYacht,
   updateYachtById,
@@ -32,6 +33,11 @@ yachtsRouter.get(
 yachtsRouter.get("/own", authenticate, controllerWrapper(getAllOwnYachts));
 
 yachtsRouter.get("/:id", controllerWrapper(getYachtById));
+
+yachtsRouter.get(
+  "/:id/similar-yachts",
+  controllerWrapper(getSimilarYachtsById)
+);
 
 yachtsRouter.delete("/:id", authenticate, controllerWrapper(deleteYachtById));
 

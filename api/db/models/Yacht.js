@@ -91,7 +91,7 @@ const Yacht = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    coldRecommendations: {
+    similarYachts: {
       type: DataTypes.ARRAY(DataTypes.UUID),
       allowNull: true,
     },
