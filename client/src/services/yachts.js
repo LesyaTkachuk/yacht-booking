@@ -10,6 +10,8 @@ export const getUserYachts = async () => await axios.get("/yachts/own");
 
 export const getYachtById = async (id) => await axios.get(`/yachts/${id}`);
 
+export const getSimilarYachts = async (id) => await axios.get(`/yachts/${id}/similar-yachts`);
+
 export const addYacht = async (yacht) => await axios.post("/yachts", yacht);
 
 export const removeYacht = async (id) => await axios.delete(`/yachts/${id}`);
