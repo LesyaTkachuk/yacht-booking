@@ -71,3 +71,23 @@ export const getRecommendations = async (query) => {
 
   return recommendedYachts;
 };
+
+export const getSimilarYachts = async (yachtId) => {
+  const yacht = await Yacht.findByPk(yachtId, {
+    attributes: ["similarYachts"],
+  });
+
+  if (!yacht || !yacht.similarYachts || yacht.similarYachts.length === 0) {
+    return [];
+  }
+
+  const recommendationIds = yacht.similarYachts;
+
+  const recommendedYachts = await Yacht.findAll({
+    where: {
+      id: { [Op.in]: recommendationIds },
+    },
+  });
+
+  return recommendedYachts;
+};
