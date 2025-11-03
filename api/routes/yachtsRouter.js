@@ -35,7 +35,7 @@ yachtsRouter.get("/own", authenticate, controllerWrapper(getAllOwnYachts));
 yachtsRouter.get("/:id", controllerWrapper(getYachtById));
 
 yachtsRouter.get(
-  "/:id/similar-yachts",
+  "/:id/similar",
   controllerWrapper(getSimilarYachtsById)
 );
 

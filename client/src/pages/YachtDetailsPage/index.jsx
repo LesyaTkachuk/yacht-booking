@@ -31,7 +31,7 @@ const YachtDetailsPage = () => {
   });
 
   const { isPending: isRecsPending, data: similarYachts } = useQuery({
-    queryKey: ["yachts", id, "similarYachts"],
+    queryKey: ["similarYachts", id],
     queryFn: () => getSimilarYachts(id),
     enabled: !!id,
   });
@@ -99,15 +99,11 @@ const YachtDetailsPage = () => {
                 spaceBetween={24}
                 slidesPerView={"auto"}
                 
-                // 1. Передаємо refs у навігацію. 
-                //    (Під час першого рендеру тут буде null, але це нормально)
                 navigation={{
                   prevEl: navigationPrevRef.current,
                   nextEl: navigationNextRef.current,
                 }}
 
-                // 2. Коли Swiper готовий, ми зберігаємо його 
-                //    в state. Це викличе re-render.
                 onSwiper={setSwiperInstance}
               >
                 {similarYachts.map((recYacht) => (
@@ -120,7 +116,6 @@ const YachtDetailsPage = () => {
                 ))}
               </Swiper>
 
-              {/* 3. Кнопки (refs тепер прив'язані до DOM-елементів) */}
               <IconButton
                 ref={navigationPrevRef}
                 sx={{
