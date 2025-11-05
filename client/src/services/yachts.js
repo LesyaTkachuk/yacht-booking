@@ -3,6 +3,9 @@ import axios from "./axiosInstance.js";
 export const getYachts = async () =>
   await axios.get("/yachts", { params: { limit: 18 } });
 
+export const getTopBookedYachts = async () =>
+  await axios.get("/yachts//top-booked");
+
 export const getRecommendedYachts = async () =>
   await axios.get("/yachts/recommendations");
 
@@ -10,7 +13,8 @@ export const getUserYachts = async () => await axios.get("/yachts/own");
 
 export const getYachtById = async (id) => await axios.get(`/yachts/${id}`);
 
-export const getSimilarYachts = async (id) => await axios.get(`/yachts/${id}/similar`);
+export const getSimilarYachts = async (id) =>
+  await axios.get(`/yachts/${id}/similar`);
 
 export const addYacht = async (yacht) => await axios.post("/yachts", yacht);
 
