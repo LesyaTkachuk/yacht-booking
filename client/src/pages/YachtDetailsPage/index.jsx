@@ -92,12 +92,96 @@ const YachtDetailsPage = () => {
               </Stack>
             </Stack>
             <Stack direction="row" gap={4} justifyContent={"space-between"}>
-              <Typography variant="h3">{yacht.name}</Typography>
+              <Typography variant="h5">${yacht.summerLowSeasonPrice} / day</Typography>
               <Button variant="contained" onClick={onBookNow} size="large">
                 Book now
               </Button>
             </Stack>
           </Stack>
+
+          <Box sx={{ marginTop: '32px', marginBottom: '32px', width: '58%' }}>
+            <Box marginBottom={4} sx={{ color: '#000000', paddingLeft: '60px' }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, marginBottom: '16px' }}>
+                Luxury Yacht {yacht.name}
+              </Typography>
+
+              <Typography variant="body1" sx={{ fontWeight: 400, color: '#000000', lineHeight: '24px' }}>
+                {yacht.description}
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 500, marginBottom: '24px', textAlign: 'left', paddingLeft: '60px' }}>
+                Specification
+              </Typography>
+
+              <Stack gap={2} paddingLeft={'60px'}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" 
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Year:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.year || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Type:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.type || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Length:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {`${yacht.length} m` || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Location:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.baseMarina || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Cabins:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.cabins || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Capacity:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.guests || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Crew:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.crew || 'N/A'}
+                  </Typography>
+                </Stack>
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center"
+                  sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}>
+                  <Typography variant="body1" sx={{ color: '#000000', paddingLeft: '130px' }}>Rating:</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 400 }}>
+                    {yacht.rating || 'N/A'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Box>
+          </Box>
 
           {!isRecsPending && similarYachts?.length > 0 && (
             <Box position="relative" mt={6}>
