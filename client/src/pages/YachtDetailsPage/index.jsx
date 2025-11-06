@@ -59,6 +59,27 @@ const YachtDetailsPage = () => {
   const navigationPrevRef = useRef(null);
   const navigationNextRef = useRef(null);
 
+  const YachtDetailsRow = ({ leftText, rightText }) => {
+    return (
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ borderBottom: '1px solid #e0e0e0', paddingBottom: '12px' }}
+      >
+        <Typography
+          variant="body1"
+          sx={{ color: '#000000', paddingLeft: '130px' }}
+        >
+          {leftText}
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 400 }}>
+          {rightText || 'N/A'}
+        </Typography>
+      </Stack>
+    );
+  };
+
   return (
     <Stack width="100%" padding={"20px"}>
       {/* <Link to={backLinkHref}>Back to yachts</Link> */}
@@ -92,12 +113,48 @@ const YachtDetailsPage = () => {
               </Stack>
             </Stack>
             <Stack direction="row" gap={4} justifyContent={"space-between"}>
-              <Typography variant="h3">{yacht.name}</Typography>
+              <Typography variant="h5">${yacht.summerLowSeasonPrice} / day</Typography>
               <Button variant="contained" onClick={onBookNow} size="large">
                 Book now
               </Button>
             </Stack>
           </Stack>
+
+          <Box sx={{ marginTop: '32px', marginBottom: '32px', width: '58%' }}>
+            <Box marginBottom={4} sx={{ color: '#000000', paddingLeft: '60px' }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, marginBottom: '16px' }}>
+                Luxury Yacht {yacht.name}
+              </Typography>
+
+              <Typography variant="body1" sx={{ fontWeight: 400, color: '#000000', lineHeight: '24px' }}>
+                {yacht.description}
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 500, marginBottom: '24px', textAlign: 'left', paddingLeft: '60px' }}>
+                Specification
+              </Typography>
+
+              <Stack gap={2} paddingLeft={'60px'}>
+                <YachtDetailsRow leftText="Year:" rightText={yacht.year} />
+
+                <YachtDetailsRow leftText="Type:" rightText={yacht.type} />
+
+                <YachtDetailsRow leftText="Length, m:" rightText={yacht.length} />
+
+                <YachtDetailsRow leftText="Location:" rightText={yacht.baseMarina} />
+
+                <YachtDetailsRow leftText="Cabins:" rightText={yacht.cabins} />
+
+                <YachtDetailsRow leftText="Capacity:" rightText={yacht.guests} />
+
+                <YachtDetailsRow leftText="Crew:" rightText={yacht.crew} />
+
+                <YachtDetailsRow leftText="Rating:" rightText={yacht.rating} />
+              </Stack>
+            </Box>
+          </Box>
 
           {!isRecsPending && similarYachts?.length > 0 && (
             <Box position="relative" mt={6}>
