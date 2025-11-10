@@ -1,8 +1,12 @@
+import { spawn } from "child_process";
+import path from "path";
+import { fileURLToPath } from "url";
 import Yacht from "../db/models/Yacht.js";
 import User from "../db/models/User.js";
 import Event from "../db/models/Event.js";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "../constants/yachts.js";
 import { Op } from "sequelize";
+import dotenv from "dotenv";
 
 const getBookedYachtIds = async () => {
   // collect yachtIds that have been booked at least once
@@ -44,7 +48,13 @@ export const getYacht = (query) => Yacht.findOne({ where: query });
 
 export const removeYacht = (query) => Yacht.destroy({ where: query });
 
-export const addYacht = (data) => Yacht.create(data);
+export const addYacht = async (data) => {
+  const newYacht = await Yacht.create(data);
+
+  triggerSimilarYachtsUpdate();
+
+  return newYacht;
+};
 
 export const updateYacht = async (query, data) => {
   const yacht = await getYacht(query);
@@ -168,4 +178,35 @@ export const getSimilarYachts = async (yachtId) => {
   });
 
   return recommendedYachts;
+};
+
+const triggerSimilarYachtsUpdate = () => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+  const pythonPath = process.env.PYTHON_PATH;
+
+  const scriptPath = path.resolve(__dirname, "../../models/similar_yachts_model.py");
+
+  console.log("[Python] Starting script:", scriptPath);
+
+  const pythonProcess = spawn(pythonPath, [scriptPath]);
+
+  pythonProcess.stdout.on("data", (data) => {
+    console.log(`[Python/stdout]: ${data.toString().trim()}`);
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    console.error(`[Python/stderr]: ${data.toString().trim()}`);
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code === 0) {
+      console.log("[Python] Script similar_yachts_model.py finished successfully ✅");
+    } else {
+      console.error(`[Python] Script interrupted with error code ${code} ❌`);
+    }
+  });
 };
