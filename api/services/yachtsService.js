@@ -190,7 +190,7 @@ const triggerSimilarYachtsUpdate = () => {
 
   const scriptPath = path.resolve(__dirname, "../../models/similar_yachts_model.py");
 
-  console.log("[Python] Запускаю скрипт:", scriptPath);
+  console.log("[Python] Starting script:", scriptPath);
 
   const pythonProcess = spawn(pythonPath, [scriptPath]);
 
@@ -204,9 +204,9 @@ const triggerSimilarYachtsUpdate = () => {
 
   pythonProcess.on("close", (code) => {
     if (code === 0) {
-      console.log("[Python] Скрипт similar_yachts_model.py успішно завершив роботу ✅");
+      console.log("[Python] Script similar_yachts_model.py finished successfully ✅");
     } else {
-      console.error(`[Python] Скрипт завершився з кодом помилки ${code} ❌`);
+      console.error(`[Python] Script interrupted with error code ${code} ❌`);
     }
   });
 };

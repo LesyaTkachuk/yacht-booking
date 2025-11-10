@@ -29,7 +29,7 @@ class YachtRecommender:
         for col in numerical_features:
             df[col] = pd.to_numeric(df[col], errors='coerce')
             median_val = df[col].median()
-            df[col] = df[col].fillna(median_val if pd.notna(median_val) else 0) # Заповнюємо 0, якщо медіана = NaN
+            df[col] = df[col].fillna(median_val if pd.notna(median_val) else 0)
         
         price_cols = ['summerLowSeasonPrice', 'summerHighSeasonPrice', 'winterLowSeasonPrice', 'winterHighSeasonPrice']
         for col in price_cols:
@@ -62,7 +62,7 @@ class YachtRecommender:
         
         feature_matrix = feature_matrix.fillna(0)
         
-        print(f"✅ Feature matrix створено: {feature_matrix.shape}")
+        print(f"✅ Feature matrix created: {feature_matrix.shape}")
         print(f"   Numerical features: {len(feature_cols)}")
         print(f"   Type dummies: {type_dummies.shape[1]}")
         print(f"   Marina dummies: {marina_dummies.shape[1]}")
@@ -71,7 +71,7 @@ class YachtRecommender:
         return feature_matrix
     
     def fit(self, n_neighbors=11, metric='cosine'):
-        print(f"\n🔧 Тренування KNN моделі (n_neighbors={n_neighbors}, metric={metric})...")
+        print(f"\n🔧 Training KNN model (n_neighbors={n_neighbors}, metric={metric})...")
         
         self.feature_matrix = self.prepare_features()
         
@@ -94,16 +94,16 @@ class YachtRecommender:
         
         self.knn_model.fit(feature_matrix_scaled)
         
-        print(f"✅ KNN модель натренована!")
+        print(f"✅ KNN model trained!")
         
         return self
     
     def recommend(self, yacht_id, top_k=10, filters=None):
         if self.knn_model is None:
-            raise ValueError("Модель не натренована! Спочатку викличте .fit()")
+            raise ValueError("Model is not trained! Call .fit() before")
         
         if yacht_id not in self.yacht_id_to_idx:
-            raise ValueError(f"Yacht ID {yacht_id} не знайдено в датасеті")
+            raise ValueError(f"Yacht ID {yacht_id} not found in dataset")
         
         yacht_idx = self.yacht_id_to_idx[yacht_id]
         
@@ -141,7 +141,7 @@ class YachtRecommender:
                 'idx_to_yacht_id': self.idx_to_yacht_id,
                 'df': self.df
             }, f)
-        print(f"✅ Модель збережена у {filepath}")
+        print(f"✅ Model saved in {filepath}")
     
     @classmethod
     def load_model(cls, filepath='similar_yachts.pkl'):
@@ -155,18 +155,18 @@ class YachtRecommender:
         recommender.yacht_id_to_idx = data['yacht_id_to_idx']
         recommender.idx_to_yacht_id = data['idx_to_yacht_id']
         
-        print(f"✅ Модель завантажена з {filepath}")
+        print(f"✅ Model uploaded from {filepath}")
         return recommender
 
 
 if __name__ == "__main__":
     
-    print("--- [Sim Yachts] Початок оновлення 'similarYachts' ---")
+    print("--- [Sim Yachts] Starting update 'similarYachts' ---")
     print(os.getenv("DATABASE_USERNAME"))
 
     db_string = "postgresql+psycopg2://" + os.getenv("DATABASE_USERNAME") + ":" + os.getenv("DATABASE_PASSWORD") + "@" + os.getenv("DATABASE_HOST") + ":" + os.getenv("DATABASE_PORT") + "/" + os.getenv("DATABASE_NAME")
     if not db_string:
-        print("❌ ПОМИЛКА: Змінна середовища DB_STRING не встановлена.")
+        print("❌ ERROR: Environment variable DB_STRING not set.")
         exit(1)
         
     engine = create_engine(db_string)
@@ -178,20 +178,19 @@ if __name__ == "__main__":
     finally:
         raw_conn.close()
     
-    print(f"Завантажено {len(df)} яхт з бази даних.")
+    print(f"Uploaded {len(df)} yachts from database.")
     
-    # (n_neighbors=12, щоб отримати 11 рекомендацій + саму яхту)
     recommender = YachtRecommender(df)
     recommender.fit(n_neighbors=13, metric='cosine')
     
-    recommender.save_model('yacht_recommender.pkl')
+    recommender.save_model('similar_yachts.pkl')
     
-    print("\n🚀 Починаємо генерацію рекомендацій для всіх яхт...")
+    print("\n🚀 Start generating similar yachts...")
     
     all_recommendations_data = []
     all_yacht_ids = df['id'].unique()
     
-    for yacht_id in tqdm(all_yacht_ids, desc="Генерація рекомендацій"):
+    for yacht_id in tqdm(all_yacht_ids, desc="Generating recommendations"):
         try:
             recs_df = recommender.recommend(yacht_id, top_k=11)
             recs_ids = recs_df['id'].tolist()
@@ -201,15 +200,15 @@ if __name__ == "__main__":
                 'similar_yachts': recs_ids
             })
         except ValueError as e:
-            print(f"Помилка для yacht_id {yacht_id}: {e}")
+            print(f"Error for yacht_id {yacht_id}: {e}")
             all_recommendations_data.append({
                 'yacht_id': yacht_id,
                 'similar_yachts': []
             })
 
-    print(f"\n✅ Успішно згенеровано рекомендації для {len(all_recommendations_data)} яхт.")
+    print(f"\n✅ Successfull generation for {len(all_recommendations_data)} yachts.")
     
-    print(f"📤 Оновлюємо 'similarYachts' в 'yachts' таблиці...")
+    print(f"📤 Updating 'similarYachts' in 'yachts' table...")
     
     update_query = text("""
         UPDATE yachts
@@ -222,7 +221,7 @@ if __name__ == "__main__":
     
     try:
         with engine.begin() as conn:
-            for item in tqdm(all_recommendations_data, desc="Оновлення бази даних"):
+            for item in tqdm(all_recommendations_data, desc="Database update"):
                 yacht_id = str(item['yacht_id'])
                 recs = [str(r) for r in item['similar_yachts']]
 
@@ -231,9 +230,9 @@ if __name__ == "__main__":
                     "recs": recs
                 })
 
-        print(f"✅ Дані успішно завантажено в 'yachts' таблицю!")
+        print(f"✅ Data successfully uploaded in 'yachts' table!")
         
     except Exception as e:
-        print(f"❌ Помилка під час оновлення 'yachts' в базі даних: {e}")
+        print(f"❌ Error during update 'yachts' in database: {e}")
 
-    print("--- [Sim Yachts] Оновлення 'similarYachts' завершено ---")
+    print("--- [Sim Yachts] Update 'similarYachts' finished ---")
