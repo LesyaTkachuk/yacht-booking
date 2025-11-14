@@ -52,8 +52,10 @@ source .venv/bin/activate
 pip install -r ./requirements.txt
 ```
 
-- to train model 
+- to train model (run from project root)
 
 ```
-python3 train_reco_model.py
+python -m models.recommendation_model
 ```
+
+- to test different models and find the best parameters with the help of normal and advanced grid search you can use model/train_reco_model_from_csv.ipynb file, that uses .csv files uploaded from project database

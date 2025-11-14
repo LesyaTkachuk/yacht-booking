@@ -16,10 +16,10 @@ const PageWrapper = ({ children }) => {
   }, [setUser]);
 
   return (
-    <Stack>
+    <StyledWrapper>
       <Header />
-      <StyledWrapper>{children}</StyledWrapper>
-    </Stack>
+      {children}
+    </StyledWrapper>
   );
 };
 

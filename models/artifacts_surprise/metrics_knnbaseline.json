@@ -1,0 +1,11 @@
+{
+  "rmse": 1.2250401223936112,
+  "mae": 0.9279069686456044,
+  "precision_at_k": 0.0,
+  "recall_at_k": 0.0,
+  "ndcg_at_k": 0.0,
+  "users_evaluated": 34,
+  "k": 20,
+  "pos_threshold": 2.5,
+  "test_size": 0.1
+}

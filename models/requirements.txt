@@ -5,3 +5,4 @@ numpy<2
 python-dotenv
 SQLAlchemy
 black
+tqdm
