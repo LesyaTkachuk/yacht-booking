@@ -4,9 +4,9 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 import pickle
-from sqlalchemy import create_engine, text, bindparam
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy import create_engine
 from tqdm import tqdm
+from io import StringIO
 import dotenv
 
 dotenv.load_dotenv()
@@ -183,56 +183,68 @@ if __name__ == "__main__":
     recommender = YachtRecommender(df)
     recommender.fit(n_neighbors=13, metric='cosine')
     
-    recommender.save_model('similar_yachts.pkl')
-    
     print("\n🚀 Start generating similar yachts...")
     
+    X_scaled = recommender.scaler.transform(recommender.feature_matrix.values)
+    
+    # n_neighbors=13
+    distances_matrix, indices_matrix = recommender.knn_model.kneighbors(X_scaled, n_neighbors=13)
+    
     all_recommendations_data = []
-    all_yacht_ids = df['id'].unique()
     
-    for yacht_id in tqdm(all_yacht_ids, desc="Generating recommendations"):
-        try:
-            recs_df = recommender.recommend(yacht_id, top_k=11)
-            recs_ids = recs_df['id'].tolist()
-            
-            all_recommendations_data.append({
-                'yacht_id': yacht_id,
-                'similar_yachts': recs_ids
-            })
-        except ValueError as e:
-            print(f"Error for yacht_id {yacht_id}: {e}")
-            all_recommendations_data.append({
-                'yacht_id': yacht_id,
-                'similar_yachts': []
-            })
-
-    print(f"\n✅ Successfull generation for {len(all_recommendations_data)} yachts.")
-    
-    print(f"📤 Updating 'similarYachts' in 'yachts' table...")
-    
-    update_query = text("""
-        UPDATE yachts
-        SET "similarYachts" = :recs
-        WHERE id = :id
-    """).bindparams(
-        bindparam("recs", type_=ARRAY(UUID)),
-        bindparam("id",   type_=UUID),
-    )
-    
-    try:
-        with engine.begin() as conn:
-            for item in tqdm(all_recommendations_data, desc="Database update"):
-                yacht_id = str(item['yacht_id'])
-                recs = [str(r) for r in item['similar_yachts']]
-
-                conn.execute(update_query, {
-                    "id": yacht_id,
-                    "recs": recs
-                })
-
-        print(f"✅ Data successfully uploaded in 'yachts' table!")
+    for i, row_indices in enumerate(tqdm(indices_matrix, desc="Processing results")):
+        source_yacht_id = recommender.idx_to_yacht_id[i]
         
-    except Exception as e:
-        print(f"❌ Error during update 'yachts' in database: {e}")
+        similar_indices = row_indices[1:]
+        
+        similar_ids = [recommender.idx_to_yacht_id[idx] for idx in similar_indices]
+        
+        all_recommendations_data.append({
+            'yacht_id': source_yacht_id,
+            'similar_yachts': similar_ids
+        })
+
+    print(f"\n✅ Successful generation for {len(all_recommendations_data)} yachts.")
+    
+    print(f"📤 Updating 'similarYachts' in 'yachts' table (Batch Update)...")
+    
+    conn = engine.raw_connection()
+    cursor = conn.cursor()
+
+    try:
+        # 1. Create temp table
+        cursor.execute("""
+            CREATE TEMP TABLE tmp_similarity (
+                id UUID,
+                "similar" UUID[]
+            )
+        """)
+
+        # 2. Fill temp table via COPY
+        buffer = StringIO()
+
+        for item in all_recommendations_data:
+            yacht_id = str(item["yacht_id"])
+            similar = ",".join(str(x) for x in item["similar_yachts"])
+            buffer.write(f"{yacht_id}\t{{{similar}}}\n")
+
+        buffer.seek(0)
+        cursor.copy_from(buffer, "tmp_similarity", sep="\t")
+
+        # 3. Massive update
+        cursor.execute("""
+            UPDATE yachts AS y
+            SET "similarYachts" = tmp.similar
+            FROM tmp_similarity AS tmp
+            WHERE y.id = tmp.id
+        """)
+
+        conn.commit()
+
+    finally:
+        cursor.close()
+        conn.close()
+
+    print(f"✅ Data successfully uploaded in 'yachts' table!")
 
     print("--- [Sim Yachts] Update 'similarYachts' finished ---")
