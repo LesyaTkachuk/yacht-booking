@@ -221,7 +221,6 @@ if __name__ == "__main__":
         """)
 
         # 2. Fill temp table via COPY
-        from io import StringIO
         buffer = StringIO()
 
         for item in all_recommendations_data:
