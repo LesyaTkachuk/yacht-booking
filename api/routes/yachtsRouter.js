@@ -9,7 +9,8 @@ import {
   updateYachtById,
   updateYachtRatingById,
   getRecommendations,
-  getTopBookedYachts
+  getTopBookedYachts,
+  getUploadUrl
 } from "../controllers/yachtsController.js";
 import controllerWrapper from "../helpers/controllerWrapper.js";
 import validateBody from "../helpers/validateBody.js";
@@ -34,6 +35,8 @@ yachtsRouter.get(
 yachtsRouter.get("/own", authenticate, controllerWrapper(getAllOwnYachts));
 
 yachtsRouter.get("/top-booked", controllerWrapper(getTopBookedYachts));
+
+yachtsRouter.get("/upload-url", authenticate, controllerWrapper(getUploadUrl));
 
 yachtsRouter.get("/:id", controllerWrapper(getYachtById));
 

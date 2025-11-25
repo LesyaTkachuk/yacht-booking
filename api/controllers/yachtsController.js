@@ -6,6 +6,9 @@ import { USER_ROLES } from "../constants/auth.js";
 
 import HttpError from "../helpers/HttpError.js";
 
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 // TODO add filters and pagination
 export const getAllYachts = async (req, res) => {
   const queryParams = req.query;
@@ -114,4 +117,42 @@ export const getSimilarYachtsById = async (req, res) => {
   const { id } = req.params;
   const recommendations = await yachtsService.getSimilarYachts(id);
   res.status(200).json(recommendations);
+};
+
+const r2Client = new S3Client({
+  region: "auto",
+  endpoint: process.env.R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
+});
+
+export const getUploadUrl = async (req, res) => {
+  const { name, index, fileType } = req.query;
+  
+  if (!name || index === undefined || !fileType) {
+    throw HttpError(400, "Missing parameters");
+  }
+
+  const cleanName = name.trim().toUpperCase();
+  const extension = fileType.split('/')[1] || 'jpg';
+  
+  const fileName = parseInt(index) === 0 
+    ? `00_main.${extension}` 
+    : `${String(index).padStart(2, '0')}.${extension}`;
+
+  const key = `yachts/yachts/${cleanName}/${fileName}`;
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME,
+    Key: key,
+    ContentType: fileType,
+  });
+
+  const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 60 });
+  
+  const publicUrl = `${process.env.R2_PUBLIC_DOMAIN}/${key}`;
+
+  res.json({ uploadUrl, publicUrl });
 };
