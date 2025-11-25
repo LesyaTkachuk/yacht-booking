@@ -39,7 +39,7 @@ const YachtDetailsPage = () => {
   const { isPending: isRecsPending, data: similarYachts } = useQuery({
     queryKey: ["similarYachts", id],
     queryFn: () => getSimilarYachts(id),
-    enabled: shouldFetchSimilar, // Вимикаємо запит для власників
+    enabled: shouldFetchSimilar,
   });
 
   useShowError(isError, "There was an error getting yacht details");
@@ -153,7 +153,6 @@ const YachtDetailsPage = () => {
             </Box>
           </Box>
 
-          {/* 3. Показуємо слайдер тільки якщо це НЕ власник (LESSER) */}
           {user?.role !== USER_ROLES.LESSER && !isRecsPending && similarYachts?.length > 0 && (
             <Box position="relative" mt={6}>
               <Typography variant="h5" textAlign="left" mb={2}>

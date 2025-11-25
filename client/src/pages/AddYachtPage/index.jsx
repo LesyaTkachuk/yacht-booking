@@ -13,9 +13,9 @@ import {
 import { LoadingButton } from "@mui/lab";
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import TextField from "../../components/TextField";
-import { addYacht, getPresignedUrl, uploadFileToR2 } from "../../services/yachts";
-import { ROUTES } from "../../navigation/routes";
+import TextField from "src/components/TextField";
+import { addYacht, getPresignedUrl, uploadFileToR2 } from "src/services/yachts";
+import { ROUTES } from "src/navigation/routes";
 
 const AddYachtPage = () => {
   const navigate = useNavigate();
