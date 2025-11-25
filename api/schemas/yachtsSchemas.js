@@ -9,14 +9,15 @@ export const createYachtSchema = Joi.object({
   length: Joi.number().min(1).max(1000).required(),
   year: Joi.number().min(1900).max(2025).required(),
   model: Joi.string().min(2).max(100).optional(),
-  summerLowSeasonPrice: Joi.number().min(1).max(10000).required(),
-  summerHighSeasonPrice: Joi.number().min(1).max(10000).required(),
-  winterLowSeasonPrice: Joi.number().min(1).max(10000).required(),
-  winterHighSeasonPrice: Joi.number().min(1).max(10000).required(),
+  summerLowSeasonPrice: Joi.number().min(1).max(500000).required(),
+  summerHighSeasonPrice: Joi.number().min(1).max(500000).required(),
+  winterLowSeasonPrice: Joi.number().min(1).max(500000).required(),
+  winterHighSeasonPrice: Joi.number().min(1).max(500000).required(),
   rating: Joi.number().min(0).max(5).optional(),
   country: Joi.string().min(2).max(100).required(),
   baseMarina: Joi.string().min(2).max(100).optional(),
   description: Joi.string().min(2).max(1000).optional(),
+  photos: Joi.array().items(Joi.string()).optional(),
 });
 
 export const updateYachtSchema = Joi.object({

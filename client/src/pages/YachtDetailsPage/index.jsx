@@ -12,11 +12,15 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { EVENTS } from "src/constants/events";
 import { StyledImage } from "./styled";
 import { addEvent } from "src/services/events";
+import { useAuth } from "src/context/authContext";
+import { USER_ROLES } from "src/constants/user";
 
 const YachtDetailsPage = () => {
   const { id } = useParams();
   const location = useLocation();
   const backLinkHref = location.state ?? "/";
+  
+  const { user } = useAuth();
 
   const [swiperInstance, setSwiperInstance] = useState(null);
 
@@ -30,10 +34,12 @@ const YachtDetailsPage = () => {
     enabled: !!id,
   });
 
+  const shouldFetchSimilar = !!id && user?.role !== USER_ROLES.LESSER;
+
   const { isPending: isRecsPending, data: similarYachts } = useQuery({
     queryKey: ["similarYachts", id],
     queryFn: () => getSimilarYachts(id),
-    enabled: !!id,
+    enabled: shouldFetchSimilar, // Вимикаємо запит для власників
   });
 
   useShowError(isError, "There was an error getting yacht details");
@@ -48,7 +54,6 @@ const YachtDetailsPage = () => {
       console.log(
         `${EVENTS.START_BOOKING} event was successfully sent to the server`
       );
-      // TODO add logic of adding to the cart
     },
   });
 
@@ -82,7 +87,6 @@ const YachtDetailsPage = () => {
 
   return (
     <Stack width="100%" padding={"20px"}>
-      {/* <Link to={backLinkHref}>Back to yachts</Link> */}
       {isPending && <Loader />}
       {!isPending && yacht && (
         <>
@@ -138,25 +142,19 @@ const YachtDetailsPage = () => {
 
               <Stack gap={2} paddingLeft={'60px'}>
                 <YachtDetailsRow leftText="Year:" rightText={yacht.year} />
-
                 <YachtDetailsRow leftText="Type:" rightText={yacht.type} />
-
                 <YachtDetailsRow leftText="Length, m:" rightText={yacht.length} />
-
                 <YachtDetailsRow leftText="Location:" rightText={yacht.baseMarina} />
-
                 <YachtDetailsRow leftText="Cabins:" rightText={yacht.cabins} />
-
                 <YachtDetailsRow leftText="Capacity:" rightText={yacht.guests} />
-
                 <YachtDetailsRow leftText="Crew:" rightText={yacht.crew} />
-
                 <YachtDetailsRow leftText="Rating:" rightText={yacht.rating} />
               </Stack>
             </Box>
           </Box>
 
-          {!isRecsPending && similarYachts?.length > 0 && (
+          {/* 3. Показуємо слайдер тільки якщо це НЕ власник (LESSER) */}
+          {user?.role !== USER_ROLES.LESSER && !isRecsPending && similarYachts?.length > 0 && (
             <Box position="relative" mt={6}>
               <Typography variant="h5" textAlign="left" mb={2}>
                 You Might Also Like

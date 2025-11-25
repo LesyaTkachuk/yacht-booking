@@ -25,3 +25,27 @@ export const updateYacht = async (id, yacht) =>
 
 export const updateYachtRating = async (id, rating) =>
   await axios.patch(`/yachts/${id}/rating`, { rating });
+
+export const getPresignedUrl = async (name, index, fileType) => {
+  const response = await axios.get("/yachts/upload-url", {
+    params: { name, index, fileType },
+  });
+  return response;
+};
+
+export const uploadFileToR2 = async (uploadUrl, file) => {
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    body: file,
+    headers: {
+      "Content-Type": file.type,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("R2 Upload Error:", errorText);
+    throw new Error(`Failed to upload to R2: ${response.status} ${response.statusText}`);
+  }
+};
+
