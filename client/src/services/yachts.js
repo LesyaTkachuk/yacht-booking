@@ -6,6 +6,12 @@ export const getYachts = async () =>
 export const getTopBookedYachts = async () =>
   await axios.get("/yachts//top-booked");
 
+export const getNewArrivals = async () =>
+  await axios.get("/yachts/new-arrivals");
+
+export const getPersonalizedNewArrivals = async () =>
+  await axios.get("/yachts//personalized/new-arrivals");
+
 export const getRecommendedYachts = async () =>
   await axios.get("/yachts/recommendations");
 

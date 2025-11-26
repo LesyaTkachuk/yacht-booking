@@ -24,6 +24,22 @@ const getBookedYachtIds = async () => {
 
   return bookedIds;
 };
+
+const getBudgetFilter = (budgetMin, budgetMax) => {
+  // build budget filter: [budgetMin, budgetMax * 1.2]
+  const hasBudgetMin = Number.isFinite(budgetMin);
+  const hasBudgetMax = Number.isFinite(budgetMax);
+  const minPrice = hasBudgetMin ? budgetMin : 0;
+  const maxPrice = hasBudgetMax ? Math.floor(budgetMax * 1.2) : null;
+
+  const priceWhere =
+    maxPrice != null
+      ? { summerLowSeasonPrice: { [Op.between]: [minPrice, maxPrice] } }
+      : { summerLowSeasonPrice: { [Op.gte]: minPrice } };
+
+  return priceWhere;
+};
+
 export const listYachts = async (query) => {
   const {
     page: queryPage = DEFAULT_PAGE,
@@ -88,6 +104,36 @@ export const getTopBookedYachts = async () => {
   });
 };
 
+export const getNewArrivals = async (query) => {
+  const { country, budgetMin, budgetMax } = query || {};
+
+  // build budget filter: [budgetMin, budgetMax * 1.1]
+  const priceWhere = getBudgetFilter(budgetMin, budgetMax);
+
+  const newArrivalsByCountry = await Yacht.findAll({
+    where: {
+      ...(country && { country }),
+      ...priceWhere,
+    },
+    order: [["createdAt", "DESC"]],
+    limit: 12,
+  });
+
+  if (newArrivalsByCountry.length < 12) {
+    const newArrivals = await Yacht.findAll({
+      where: {
+        ...priceWhere,
+      },
+      order: [["createdAt", "DESC"]],
+      limit: 12 - (newArrivalsByCountry?.length || 0),
+    });
+
+    return [...newArrivalsByCountry, ...newArrivals];
+  }
+
+  return newArrivalsByCountry;
+};
+
 export const getRecommendations = async (query) => {
   const user = await User.findOne({ where: query });
 
@@ -102,21 +148,14 @@ export const getRecommendations = async (query) => {
     const bookedIds = await getBookedYachtIds();
 
     // build budget filter: [budgetMin, budgetMax * 1.1]
-    const hasBudgetMin = Number.isFinite(user.budgetMin);
-    const hasBudgetMax = Number.isFinite(user.budgetMax);
-    const minPrice = hasBudgetMin ? user.budgetMin : 0;
-    const maxPrice = hasBudgetMax ? Math.floor(user.budgetMax * 1.1) : null;
-
-    const priceWhere =
-      maxPrice != null
-        ? { summerLowSeasonPrice: { [Op.between]: [minPrice, maxPrice] } }
-        : { summerLowSeasonPrice: { [Op.gte]: minPrice } };
+    const priceWhere = getBudgetFilter(user.budgetMin, user.budgetMax);
 
     // query booked yachts within budget; take the 12 highest priced
     const topByPrice = await Yacht.findAll({
       where: {
         id: { [Op.in]: bookedIds },
-        ...(hasBudgetMin || hasBudgetMax ? priceWhere : {}),
+        ...priceWhere,
+        ...(user.country && { country: user.country }),
       },
       order: [["summerLowSeasonPrice", "DESC"]],
       limit: 12,
@@ -130,6 +169,7 @@ export const getRecommendations = async (query) => {
           id: {
             [Op.in]: bookedIds.filter((id) => !excludeIds.includes(id)),
           },
+          ...(user.country && { country: user.country }),
         },
         order: [["summerLowSeasonPrice", "DESC"]],
         limit: 12 - topByPrice.length,
@@ -138,14 +178,24 @@ export const getRecommendations = async (query) => {
       topByPrice.push(...backfill);
     }
 
+    // Get 3 yachts in random location
+    const randomLocations = await Yacht.findAll({
+      where: {
+        id: { [Op.notIn]: topByPrice.map((y) => y.id), [Op.in]: bookedIds },
+        country: { [Op.ne]: user.country },
+        ...priceWhere,
+      },
+      limit: 3,
+    });
+
     // sort by rating
-    const coldStart = topByPrice
-      .sort((a, b) => {
-        const ra = Number.isFinite(a.rating) ? a.rating : 0;
-        const rb = Number.isFinite(b.rating) ? b.rating : 0;
-        return rb - ra;
-      })
-      .slice(0, 12);
+    const coldStart = [...topByPrice, ...randomLocations].sort(
+      (a, b) => parseFloat(b.rating) - parseFloat(a.rating)
+    );
+
+    if (coldStart.length > 15) {
+      return coldStart.slice(0, 15);
+    }
 
     return coldStart;
   }
@@ -188,7 +238,10 @@ const triggerSimilarYachtsUpdate = () => {
 
   const pythonPath = process.env.PYTHON_PATH;
 
-  const scriptPath = path.resolve(__dirname, "../../models/similar_yachts_model.py");
+  const scriptPath = path.resolve(
+    __dirname,
+    "../../models/similar_yachts_model.py"
+  );
 
   console.log("[Python] Starting script:", scriptPath);
 
@@ -204,7 +257,9 @@ const triggerSimilarYachtsUpdate = () => {
 
   pythonProcess.on("close", (code) => {
     if (code === 0) {
-      console.log("[Python] Script similar_yachts_model.py finished successfully ✅");
+      console.log(
+        "[Python] Script similar_yachts_model.py finished successfully ✅"
+      );
     } else {
       console.error(`[Python] Script interrupted with error code ${code} ❌`);
     }

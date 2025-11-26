@@ -5,9 +5,10 @@ import pickle
 import logging
 import numpy as np
 import pandas as pd
+import time
 
 
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, text, bindparam
@@ -17,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from surprise import Dataset, Reader, SVD, SVDpp, NMF, KNNBaseline, BaselineOnly, CoClustering, accuracy
 from surprise.model_selection import train_test_split
 
-from .settings import PG_DSN, HALF_LIFE_DAYS, VIEW_DEBOUNCE_SECONDS, LOOKBACK_DAYS, DAY_CAP, ALGO_NAME, FACTORS, EPOCHS, LR_ALL, REG_ALL, TEST_SIZE, K_TOP, POS_THRESHOLD, MIN_USER_INTERACTIONS, MIN_ITEM_INTERACTIONS,ART_DIR,CANDIDATES_N, BUSINESS_LIMIT, BUSINESS_STRATEGY
+from .settings import PG_DSN, HALF_LIFE_DAYS, VIEW_DEBOUNCE_SECONDS, LOOKBACK_DAYS, DAY_CAP, ALGO_NAME, FACTORS, EPOCHS, LR_ALL, REG_ALL, TEST_SIZE, K_TOP, POS_THRESHOLD, MIN_USER_INTERACTIONS, MIN_ITEM_INTERACTIONS,ART_DIR,CANDIDATES_N, COUNTRY_CANDIDATES_N, FALLBACK_MIN_N, FALLBACK_GLOBAL_N
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +381,7 @@ class RecommendationModel:
         # Reconstruct DataFrames for convenience
         train_df = pd.DataFrame(tr_set.build_testset(), columns=["user_id", "yacht_id", "rating"])
         test_df  = pd.DataFrame(te_set, columns=["user_id", "yacht_id", "rating"])
-        logger.info("Random split: train=%d rows, test=%d rows.", len(train_df), len(test_df))
+        logger.info("🏋️ Random split: train=%d rows, test=%d rows.", len(train_df), len(test_df))
         return tr_set, te_set, train_df, test_df
 
     # ---------- Algo factory --------------------------------------------------
@@ -422,13 +423,13 @@ class RecommendationModel:
         preds = self.algo.test(testset)
         rmse = accuracy.rmse(preds, verbose=False)
         mae  = accuracy.mae(preds, verbose=False)
-        logger.info("Model: %s", ALGO_NAME)
-        logger.info("[Pointwise] RMSE=%.4f  MAE=%.4f", rmse, mae)
+        logger.info("📦 Model: %s", ALGO_NAME)
+        logger.info("📊 RMSE=%.4f  MAE=%.4f", rmse, mae)
 
         # Top-K metrics
         rank_metrics = self.precision_recall_ndcg_at_k()
         logger.info(
-            "[Ranking] P@%d=%.4f  R@%d=%.4f  nDCG@%d=%.4f  (users=%d)",
+            "📊 [Ranking] P@%d=%.4f  R@%d=%.4f  nDCG@%d=%.4f  (users=%d)",
             K_TOP, rank_metrics["precision_at_k"],
             K_TOP, rank_metrics["recall_at_k"],
             K_TOP, rank_metrics["ndcg_at_k"],
@@ -489,76 +490,225 @@ class RecommendationModel:
                 json.dump(all_metrics, f, indent=2, ensure_ascii=False)
             logger.info("Saved metrics → %s", metrics_path)
 
+    def hydrate_yachts(self, user_id: str) -> Dict[str, pd.DataFrame]:
+        """
+        For a given user_id:
+        Returns two DataFrames:
+           - 'by_country_and_budget' — yachts filtered by user's country AND [budgetMin; budgetMax * 1.2].
+           - 'by_budget' — yachts filtered ONLY by budget.
+        """
+
+        # 1. Fetch user's country and budget range
+        user_sql = text("""
+            SELECT country, "budgetMin", "budgetMax"
+            FROM users
+            WHERE id = :user_id
+        """)
+
+        user_df = pd.read_sql(user_sql, self.engine, params={"user_id": user_id})
+
+        if user_df.empty:
+            # User not found — return empty lists
+            empty = pd.DataFrame(columns=["id", "price", "rating"])
+            return {
+                "by_country_and_budget": empty.copy(),
+                "by_budget": empty.copy(),
+            }
+
+        country = user_df.loc[0, "country"]
+        budget_min = user_df.loc[0, "budgetMin"]
+        budget_max = user_df.loc[0, "budgetMax"]
+
+        # 2. Compute extended budget range (+20% for max)
+        price_min = budget_min if pd.notnull(budget_min) else None
+        price_max = budget_max * 1.2 if pd.notnull(budget_max) else None
+
+        price_min = float(price_min) if price_min is not None else None
+        price_max = float(price_max) if price_max is not None else None
+
+        # 3. Fetch yachts filtered by country AND budget
+        yachts_country_budget_sql = text("""
+            SELECT id,
+                   "summerLowSeasonPrice" AS price,
+                   rating
+            FROM yachts
+            WHERE
+                (:country IS NULL OR country = :country)
+                AND (:price_min IS NULL OR "summerLowSeasonPrice" >= :price_min)
+                AND (:price_max IS NULL OR "summerLowSeasonPrice" <= :price_max)
+        """)
+
+        df_country_budget = pd.read_sql(
+            yachts_country_budget_sql,
+            self.engine,
+            params={
+                "country": country,
+                "price_min": price_min,
+                "price_max": price_max,
+            },
+        )
+
+        # 4. Fetch yachts filtered ONLY by budget (ignore country)
+        yachts_budget_sql = text("""
+            SELECT id,
+                   "summerLowSeasonPrice" AS price,
+                   rating
+            FROM yachts
+            WHERE
+                (:price_min IS NULL OR "summerLowSeasonPrice" >= :price_min)
+                AND (:price_max IS NULL OR "summerLowSeasonPrice" <= :price_max)
+        """)
+
+        df_budget = pd.read_sql(
+            yachts_budget_sql,
+            self.engine,
+            params={
+                "price_min": price_min,
+                "price_max": price_max,
+            },
+        )
+
+        # 5. Normalize returned structure in case DataFrames are empty
+        base_cols = ["id", "price", "rating"]
+
+        if df_country_budget.empty:
+            df_country_budget = pd.DataFrame(columns=base_cols)
+        else:
+            df_country_budget = df_country_budget[base_cols]
+
+        if df_budget.empty:
+            df_budget = pd.DataFrame(columns=base_cols)
+        else:
+            df_budget = df_budget[base_cols]
+
+        return {
+            "by_country_and_budget": df_country_budget,
+            "by_budget": df_budget,
+        }
+
+    def _predict_for_candidates(
+            self, user_id: str, candidates: List[str]
+        ) -> List[Tuple[str, float]]:
+            """
+            Helper: predict scores for a list of candidate item IDs for a given user.
+            Returns list of (item_id, predicted_score), sorted by score desc.
+            """
+            estimates: List[Tuple[str, float]] = []
+
+            for iid in candidates:
+                # Surprise expects string IDs; convert defensively
+                uid_str = str(user_id)
+                iid_str = str(iid)
+                try:
+                    pred = self.algo.predict(uid_str, iid_str, verbose=False)
+                    estimates.append((iid_str, pred.est))
+                except Exception:
+                    # If the model cannot handle some item (e.g. cold-start), skip it
+                    continue
+
+            # Sort candidates by predicted score in descending order
+            estimates.sort(key=lambda x: x[1], reverse=True)
+            return estimates
 
     def recommend_ids_for_user(self, user_id: str) -> List[str]:
         """
         Recommend top-N item IDs for a given user using the trained Surprise model.
-        Excludes items the user has already seen in the train set.
         """
 
-        # Universe & seen sets (kept simple; precompute once per call)
+        user_id_str = str(user_id)
+
+        # 1. Precompute item universe and "seen" sets from the training data.
+        #    This could be cached across calls if needed.
         item_universe = set(self.train_df["yacht_id"].astype(str).unique())
-        seen_by_user = (
+        seen_by_user_dict = (
             self.train_df.groupby("user_id")["yacht_id"]
             .apply(lambda s: set(map(str, s)))
             .to_dict()
         )
+        seen_by_user = seen_by_user_dict.get(user_id_str, set())
 
-        # Candidates = all train items not seen by the user
-        candidates = list(item_universe - seen_by_user.get(str(user_id), set()))
-        if not candidates:
-            return []
+        # 2. Get candidate DataFrames from hydrate_yachts
+        yachts_data = self.hydrate_yachts(user_id_str)
+        df_country_budget = yachts_data.get("by_country_and_budget", pd.DataFrame())
+        df_budget = yachts_data.get("by_budget", pd.DataFrame())
 
-        # Predict scores and take top-N
-        est = [(iid, self.algo.predict(str(user_id), str(iid), verbose=False).est) for iid in candidates]
-        est.sort(key=lambda x: x[1], reverse=True)
-        return [iid for iid, _ in est[:CANDIDATES_N]]
+        # 3. Filter out items already seen by the user
+        if not df_country_budget.empty:
+            df_country_budget = df_country_budget[
+                ~df_country_budget["id"].astype(str).isin(seen_by_user)
+            ]
 
-    def hydrate_yachts(self, ids: List[str]) -> pd.DataFrame:
-        """
-        Fetch price/rating for given yacht IDs preserving the input order.
-        """
+        if not df_budget.empty:
+            df_budget = df_budget[
+                ~df_budget["id"].astype(str).isin(seen_by_user)
+            ]
 
-        hydrate_sql = text("""
-            SELECT id, "summerLowSeasonPrice" AS price, rating
-            FROM yachts
-            WHERE id = ANY(:ids)
-        """).bindparams(bindparam("ids", type_=ARRAY(UUID)))
+        # Convert DataFrames to candidate ID lists
+        candidates_country_budget = (
+            df_country_budget["id"].astype(str).tolist()
+            if not df_country_budget.empty
+            else []
+        )
+        candidates_budget = (
+            df_budget["id"].astype(str).tolist()
+            if not df_budget.empty
+            else []
+        )
 
-        # Pass list of UUID strings; Postgres driver will cast properly via ARRAY(UUID)
-        df = pd.read_sql(hydrate_sql, self.engine, params={"ids": ids})
-        if df.empty:
-            return pd.DataFrame(columns=["id", "price", "rating"])
+        # If both candidate sets are empty, we will rely entirely on the fallback later.
+        # 4. Predict scores for each candidate list (if not empty)
+        est_country = (
+            self._predict_for_candidates(user_id_str, candidates_country_budget)
+            if candidates_country_budget
+            else []
+        )
+        est_budget = (
+            self._predict_for_candidates(user_id_str, candidates_budget)
+            if candidates_budget
+            else []
+        )
 
-        # Preserve caller order
-        order = {yid: i for i, yid in enumerate(ids)}
-        df["__ord"] = df["id"].map(order)
-        return df.sort_values("__ord").drop(columns="__ord")
+        # 5. Take top-N from each list
+        top_country = est_country[:COUNTRY_CANDIDATES_N]
+        top_budget = est_budget[:CANDIDATES_N]
 
-    def business_select_and_sort(self, df_y: pd.DataFrame) -> List[str]:
-        """
-        Pick up to BUSINESS_LIMIT highest-price yachts, then sort by rating desc,
-        tie-break by price desc. Returns a list of yacht IDs.
-        """
-        if df_y is None or df_y.empty:
-            return []
+        # 6. Merge and deduplicate, keeping the highest score per item
+        merged_scores: Dict[str, float] = {}
+        for iid, score in top_country + top_budget:
+            if iid not in merged_scores or score > merged_scores[iid]:
+                merged_scores[iid] = score
 
-        # Work on a copy to avoid SettingWithCopy warnings
-        top_by_price = df_y.copy()
-        # Ensure numeric types
-        top_by_price["price"] = pd.to_numeric(top_by_price["price"], errors="coerce")
-        top_by_price["rating"] = pd.to_numeric(top_by_price["rating"], errors="coerce")
+        merged_list = sorted(
+            merged_scores.items(), key=lambda x: x[1], reverse=True
+        )
+        final_ids = [iid for iid, _ in merged_list]
 
-        top_by_price = top_by_price.sort_values("price", ascending=False).head(int(BUSINESS_LIMIT))
-        # Use a helper column for clean sorting with NaNs
-        top_by_price["__r"] = top_by_price["rating"].fillna(-1)
-        final_sorted = top_by_price.sort_values(["__r", "price"], ascending=[False, False]).drop(columns="__r")
-        return final_sorted["id"].astype(str).tolist()
+        # 7. Fallback strategy if too few recommendations
+        #    Example: if we got < FALLBACK_MIN_N (e.g., < 6) candidates,
+        #    then use all unseen items from the training universe.
+        if len(final_ids) < FALLBACK_MIN_N:
+            # logger.info("Fallback case for User %s: %s items", user_id, len(final_ids))
 
+            # Global candidates: all items from train universe that user has not seen
+            global_candidates = list(item_universe - seen_by_user)
+
+            if not global_candidates:
+                # User has seen everything; return whatever we have (possibly empty)
+                return final_ids
+
+            global_est = self._predict_for_candidates(user_id_str, global_candidates)
+            # Take top FALLBACK_GLOBAL_N (e.g. 12) globally
+            final_ids_global = [iid for iid, _ in global_est[:(FALLBACK_GLOBAL_N-len(final_ids))]]
+
+            return final_ids + final_ids_global
+
+        return final_ids
+    
     def generate_and_save_recommendations(self) -> None:
         """
         Generate recommendations for all users in the train set and store them
-        into users.recommendations (uuid[]) column.
+        into users.recommendations (uuid[]) column, using raw_connection()
+        for faster bulk updates.
         """
         if self.engine is None:
             raise RuntimeError("DB engine is not initialized. Call load_data() first.")
@@ -566,7 +716,10 @@ class RecommendationModel:
             raise RuntimeError("train_df is empty. Train/split before generating recommendations.")
 
         all_users = sorted(map(str, self.train_df["user_id"].astype(str).unique().tolist()))
-        print(f"[INFO] Generating & saving recommendations into users.recommendations for {len(all_users)} users...")
+        logger.info(
+            "🚀 STARTING generating & saving recommendations into users.recommendations for %d users...",
+            len(all_users),
+        )
 
         # Ensure the target column exists
         with self.engine.begin() as conn:
@@ -575,61 +728,72 @@ class RecommendationModel:
                 ADD COLUMN IF NOT EXISTS "recommendations" uuid[];
             """))
 
-        # Parameterized UPDATE with proper ARRAY(UUID) and UUID types
-        update_user_recs = text("""
-            UPDATE users
-            SET "recommendations" = :yacht_ids
-            WHERE id = :user_id
-        """).bindparams(
-            bindparam("yacht_ids", type_=ARRAY(UUID)),
-            bindparam("user_id",   type_=UUID),
-        )
-
+        # 2. Generate recommendations for each user
+        prepared_updates_with_recs = []  # (recommendations_list, user_id)
+        prepared_updates_null = []       # (user_id,)
         processed = 0
+
+        gen_start = time.perf_counter()
         for uid in all_users:
-            # 1) Top-N candidate IDs by predicted score
             cand_ids = self.recommend_ids_for_user(uid)
-            if not cand_ids:
-                # Optionally null out recommendations if nothing to suggest
-                with self.engine.begin() as conn:
-                    conn.execute(
-                        text('UPDATE users SET "recommendations" = NULL WHERE id = :user_id::uuid'),
-                        {"user_id": uid}
-                    )
-                continue
 
-            # 2) Hydrate business fields and apply business sorting
-            ydf = self.hydrate_yachts(cand_ids)
-            final_ids = self.business_select_and_sort(ydf)
-            if not final_ids:
-                with self.engine.begin() as conn:
-                    conn.execute(
-                        text('UPDATE users SET "recommendations" = NULL WHERE id = :user_id::uuid'),
-                        {"user_id": uid}
-                    )
-                continue
-
-            # 3) Persist recommendations
-            with self.engine.begin() as conn:
-                conn.execute(update_user_recs, {"user_id": uid, "yacht_ids": final_ids})
+            if cand_ids:
+                prepared_updates_with_recs.append((cand_ids, uid))
+            else:
+                prepared_updates_null.append((uid,))
 
             processed += 1
             if processed % 200 == 0:
-                print(f"[INFO] processed {processed} users...")
+                logger.info("[INFO] prepared recommendations for %d users...", processed)
 
-        print(f"[OK] Saved recommendations for {processed} users into users.recommendations.")
+        gen_time = time.perf_counter() - gen_start
+        logger.info("⏱ TIMER: Recommendation generation for %d users took %.2f seconds", processed, gen_time)
+
+        # 3. Fast write into DB with raw_connection()
+        db_start = time.perf_counter()
+        conn = self.engine.raw_connection()
+        cursor = None
+        try:
+            cursor = conn.cursor()
+
+            # update with recommendations
+            if prepared_updates_with_recs:
+                cursor.executemany(
+                    'UPDATE users SET "recommendations" = %s::uuid[] WHERE id = %s::uuid',
+                    prepared_updates_with_recs
+                )
+
+            # update without recommendations -> NULL
+            if prepared_updates_null:
+                cursor.executemany(
+                    'UPDATE users SET "recommendations" = NULL WHERE id = %s::uuid',
+                    prepared_updates_null
+                )
+
+            conn.commit()
+        finally:
+            if cursor is not None:
+                cursor.close()
+            conn.close()
+
+        db_time = time.perf_counter() - db_start
+        logger.info(
+            "⏱ TIMER: 🗄 DB: Saved recommendations for %d users into users.recommendations in %.2f seconds "
+            "(DB write only).",
+            len(all_users),
+            db_time,
+        )
 
     def test_recommendations(self):
+        logger.info("Start testing recommendations...")
         # Test recommendation 
-        first_5_users = sorted(self.train_df["user_id"].unique().tolist())[:5]
+        first_5_users = sorted(self.train_df["user_id"].unique().tolist())[:10]
 
         for user_id in first_5_users:
             cand_ids = self.recommend_ids_for_user(user_id)
             if not cand_ids:
                 continue
-            ydf = self.hydrate_yachts(cand_ids)
-            final_ids = self.business_select_and_sort(ydf)
-            logger.info("User %s: %s", user_id, final_ids[:5])
+            logger.info("User %s: %s", user_id, cand_ids[:5])
 
         
 
@@ -651,7 +815,7 @@ def main():
     model.generate_and_save_recommendations()
 
     # test recommendations
-    # model.test_recommendations()
+    model.test_recommendations()
 
 if __name__ == "__main__":
     main()
