@@ -107,6 +107,22 @@ export const getTopBookedYachts = async (req, res) => {
   res.status(200).json(yachts);
 };
 
+export const getNewArrivals = async (req, res) => {
+  const { country, role, budgetMin, budgetMax } = req.user || {};
+  
+
+  if (role === USER_ROLES.LESSER) {
+    throw HttpError(403, PERMISSION_DENIED);
+  }
+
+  const yachts = await yachtsService.getNewArrivals({
+    country,
+    budgetMin,
+    budgetMax,
+  });
+  res.status(200).json(yachts);
+};
+
 export const getRecommendations = async (req, res) => {
   const { id } = req.user;
   const recommendations = await yachtsService.getRecommendations({ id });

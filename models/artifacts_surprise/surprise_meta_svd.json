@@ -1,6 +1,6 @@
 {
-  "algo": "KNNBaseline",
-  "trained_utc": "2025-11-25T23:55:43.344960+00:00",
+  "algo": "SVD",
+  "trained_utc": "2025-11-26T00:03:50.192257+00:00",
   "params": {
     "factors": 64,
     "epochs": 50,

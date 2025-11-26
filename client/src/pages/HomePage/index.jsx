@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StyledWrapper } from "./styled";
-import { Typography, Stack } from "@mui/material";
+import { Typography, Stack, Divider } from "@mui/material";
 import {
   getYachts,
+  getNewArrivals,
+  getPersonalizedNewArrivals,
   getRecommendedYachts,
   getTopBookedYachts,
 } from "src/services/yachts";
@@ -33,7 +35,28 @@ const HomePage = () => {
     enabled: !user?.id,
   });
 
+  const { data: newArrivals, isNewArrivalsPending } = useQuery({
+    queryKey: ["newArrivals"],
+    queryFn: getNewArrivals,
+    enabled: !user?.id,
+  });
+
+  const { data: personalizedNewArrivals, isPersonalizedNewArrivalsPending } =
+    useQuery({
+      queryKey: ["personalizedNewArrivals"],
+      queryFn: getPersonalizedNewArrivals,
+      enabled: !!user?.id,
+    });
+
   topBookedYachts?.forEach((yacht) => {
+    queryClient.setQueryData(["yachts", yacht.id], yacht);
+  });
+
+  newArrivals?.forEach((yacht) => {
+    queryClient.setQueryData(["yachts", yacht.id], yacht);
+  });
+
+  personalizedNewArrivals?.forEach((yacht) => {
     queryClient.setQueryData(["yachts", yacht.id], yacht);
   });
 
@@ -54,37 +77,72 @@ const HomePage = () => {
           </Typography>
         </Stack>
       </StyledWrapper>
-      {recommendedYachts?.length ? (
-        <Stack gap={4} padding={4}>
-          <Typography variant="h5">Top recommended yachts for you</Typography>
-          <Stack
-            direction={"row"}
-            gap={4}
-            rowGap={4}
-            flexWrap={"wrap"}
-            justifyContent={"space-between"}
-          >
-            {recommendedYachts?.map((yacht) => (
-              <YachtCard key={yacht.id} yachtDetails={yacht} />
-            ))}
+
+      {user?.id ? (
+        <>
+          <Stack gap={4} padding={4}>
+            <Typography variant="h5">Top recommended yachts for you</Typography>
+            <Stack
+              direction={"row"}
+              gap={4}
+              rowGap={4}
+              flexWrap={"wrap"}
+              justifyContent={"space-between"}
+            >
+              {recommendedYachts?.map((yacht) => (
+                <YachtCard key={yacht.id} yachtDetails={yacht} />
+              ))}
+            </Stack>
+
+            <Divider color="secondary.contrastText" />
+            <Typography variant="h5">New arrivals for you</Typography>
+            <Stack
+              direction={"row"}
+              gap={4}
+              rowGap={4}
+              flexWrap={"wrap"}
+              justifyContent={"space-between"}
+            >
+              {isPersonalizedNewArrivalsPending && <Loader />}
+              {personalizedNewArrivals?.map((yacht) => (
+                <YachtCard key={yacht.id} yachtDetails={yacht} />
+              ))}
+            </Stack>
           </Stack>
-        </Stack>
+        </>
       ) : (
-        <Stack gap={4} padding={4}>
-          <Typography variant="h5">Top booked yachts</Typography>
-          <Stack
-            direction={"row"}
-            gap={4}
-            rowGap={4}
-            flexWrap={"wrap"}
-            justifyContent={"space-between"}
-          >
-            {isPending && <Loader />}
-            {topBookedYachts?.map((yacht) => (
-              <YachtCard key={yacht.id} yachtDetails={yacht} />
-            ))}
+        <>
+          <Stack gap={4} padding={4}>
+            <Typography variant="h5">Top booked yachts</Typography>
+            <Stack
+              direction={"row"}
+              gap={4}
+              rowGap={4}
+              flexWrap={"wrap"}
+              justifyContent={"space-between"}
+            >
+              {isPending && <Loader />}
+              {topBookedYachts?.map((yacht) => (
+                <YachtCard key={yacht.id} yachtDetails={yacht} />
+              ))}
+            </Stack>
+
+            <Divider color="secondary.contrastText" />
+            <Typography variant="h5">New arrivals</Typography>
+            <Stack
+              direction={"row"}
+              gap={4}
+              rowGap={4}
+              flexWrap={"wrap"}
+              justifyContent={"space-between"}
+            >
+              {isNewArrivalsPending && <Loader />}
+              {newArrivals?.map((yacht) => (
+                <YachtCard key={yacht.id} yachtDetails={yacht} />
+              ))}
+            </Stack>
           </Stack>
-        </Stack>
+        </>
       )}
     </>
   );

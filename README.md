@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-## To train model locally
+## To train model locally move to `models` folder
 
 - create virtual environment
 

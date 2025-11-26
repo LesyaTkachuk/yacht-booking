@@ -34,6 +34,7 @@ K_TOP     = int(os.getenv("TOPK", "15"))        # for top-K metrics
 POS_THRESHOLD    = float(os.getenv("POS_THRESHOLD", "3.5"))  # rating >= POS_TH is positive in test
 
 # Recommendation Config
-CANDIDATES_N = 30
-BUSINESS_LIMIT = 12
-BUSINESS_STRATEGY = "high_price_then_sort_by_rating"
+CANDIDATES_N = 3
+COUNTRY_CANDIDATES_N = 12
+FALLBACK_MIN_N = 6
+FALLBACK_GLOBAL_N = CANDIDATES_N + COUNTRY_CANDIDATES_N

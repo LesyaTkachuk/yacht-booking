@@ -1,10 +1,10 @@
 {
-  "rmse": 1.2250401223936112,
-  "mae": 0.9279069686456044,
-  "precision_at_k": 0.0,
-  "recall_at_k": 0.0,
-  "ndcg_at_k": 0.0,
-  "users_evaluated": 34,
+  "rmse": 1.410567929815769,
+  "mae": 1.0679223144686394,
+  "precision_at_k": 0.008895705521472392,
+  "recall_at_k": 0.15644171779141106,
+  "ndcg_at_k": 0.08244262707230707,
+  "users_evaluated": 163,
   "k": 20,
   "pos_threshold": 2.5,
   "test_size": 0.1
