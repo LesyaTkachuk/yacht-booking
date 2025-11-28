@@ -5,15 +5,6 @@ import { useAuth } from "src/context/authContext";
 import { useEffect } from "react";
 
 const PageWrapper = ({ children }) => {
-  const { setUser } = useAuth();
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUserId = localStorage.getItem("userId");
-    if (storedToken && storedUserId) {
-      setUser({ token: storedToken, id: storedUserId });
-    }
-  }, [setUser]);
 
   return (
     <StyledWrapper>
