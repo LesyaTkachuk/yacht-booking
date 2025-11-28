@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await getCurrentUser();
-        // Додаємо токен до user, як при логіні в SignInForm
         setUser({ ...response, token });
       } catch (error) {
         console.error("Failed to fetch current user:", error);
