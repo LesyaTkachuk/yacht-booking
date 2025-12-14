@@ -33,6 +33,9 @@ TEST_SIZE = float(os.getenv("TEST_SIZE", "0.2"))# used if no CUTOFF
 K_TOP     = int(os.getenv("TOPK", "15"))        # for top-K metrics
 POS_THRESHOLD    = float(os.getenv("POS_THRESHOLD", "3.5"))  # rating >= POS_TH is positive in test
 
+# budgetMax extension rate
+BUSINESS_EXTENSION_RATE = float(os.getenv("LR_ALL", 1.25))
+
 # Recommendation Config
 CANDIDATES_N = 3
 COUNTRY_CANDIDATES_N = 12

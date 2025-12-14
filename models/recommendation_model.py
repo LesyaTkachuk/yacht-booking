@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from surprise import Dataset, Reader, SVD, SVDpp, NMF, KNNBaseline, BaselineOnly, CoClustering, accuracy
 from surprise.model_selection import train_test_split
 
-from .settings import PG_DSN, HALF_LIFE_DAYS, VIEW_DEBOUNCE_SECONDS, LOOKBACK_DAYS, DAY_CAP, ALGO_NAME, FACTORS, EPOCHS, LR_ALL, REG_ALL, TEST_SIZE, K_TOP, POS_THRESHOLD, MIN_USER_INTERACTIONS, MIN_ITEM_INTERACTIONS,ART_DIR,CANDIDATES_N, COUNTRY_CANDIDATES_N, FALLBACK_MIN_N, FALLBACK_GLOBAL_N
+from .settings import PG_DSN, HALF_LIFE_DAYS, VIEW_DEBOUNCE_SECONDS, LOOKBACK_DAYS, DAY_CAP, ALGO_NAME, FACTORS, EPOCHS, LR_ALL, REG_ALL, TEST_SIZE, K_TOP, POS_THRESHOLD, MIN_USER_INTERACTIONS, MIN_ITEM_INTERACTIONS,ART_DIR,CANDIDATES_N, COUNTRY_CANDIDATES_N, FALLBACK_MIN_N, FALLBACK_GLOBAL_N, BUSINESS_EXTENSION_RATE
 
 logger = logging.getLogger(__name__)
 
@@ -395,8 +395,8 @@ class RecommendationModel:
         if name == "nmf":
             return NMF(n_factors=FACTORS, n_epochs=EPOCHS, random_state=42)
         if name == "knnbaseline":
-            sim_options = {"name": "pearson_baseline", "user_based": True}
-            return KNNBaseline(sim_options=sim_options)
+            sim_options = {"name": "cosine", "user_based": True}
+            return KNNBaseline(k=40, min_k=1, sim_options=sim_options)
         if name == "baselineonly":
             return BaselineOnly()
         if name == "coclustering":
@@ -519,9 +519,9 @@ class RecommendationModel:
         budget_min = user_df.loc[0, "budgetMin"]
         budget_max = user_df.loc[0, "budgetMax"]
 
-        # 2. Compute extended budget range (+20% for max)
+        # 2. Compute extended budget range (+25% for max)
         price_min = budget_min if pd.notnull(budget_min) else None
-        price_max = budget_max * 1.2 if pd.notnull(budget_max) else None
+        price_max = budget_max * BUSINESS_EXTENSION_RATE if pd.notnull(budget_max) else None
 
         price_min = float(price_min) if price_min is not None else None
         price_max = float(price_max) if price_max is not None else None
